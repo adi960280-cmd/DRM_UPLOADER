@@ -1,21 +1,26 @@
+# Use Debian-based Python slim image
 FROM python:3.11-slim-bullseye
 
-# Set the working directory
+# Set working directory
 WORKDIR /app
 
-# Copy all files from the current directory to the container's /app directory
+# Copy all files from current directory
 COPY . .
 
-# Install necessary dependencies
-RUN apk add --no-cache \
+# Install system dependencies (Debian/Ubuntu)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    g++ \
     libffi-dev \
-    musl-dev \
+    libc6-dev \
     ffmpeg \
     aria2 \
     make \
-    g++ \
-    cmake
+    cmake \
+    unzip \
+    wget \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 # Install Bento4
 RUN wget -q https://github.com/axiomatic-systems/Bento4/archive/v1.6.0-639.zip && \
@@ -25,13 +30,16 @@ RUN wget -q https://github.com/axiomatic-systems/Bento4/archive/v1.6.0-639.zip &
     cd build && \
     cmake .. && \
     make -j$(nproc) && \
-    cp mp4decrypt /usr/local/bin/ &&\
+    cp mp4decrypt /usr/local/bin/ && \
     cd ../.. && \
     rm -rf Bento4-1.6.0-639 v1.6.0-639.zip
 
-
+# Upgrade pip and install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
-    
-# Set the command to run the application
+
+# Expose port if using Gunicorn
+EXPOSE 8000
+
+# Set the command to run your application
 CMD ["sh", "-c", "gunicorn app:app & python3 main.py"]
